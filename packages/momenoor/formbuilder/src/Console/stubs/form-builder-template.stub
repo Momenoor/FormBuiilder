@@ -1,0 +1,16 @@
+<?php
+
+namespace {{namespace}};
+
+use Momenoor\FormBuilder\Form;
+
+class {{class}} extends Form
+{
+
+    public function buildForm()
+    {
+
+        {{fields}}
+
+    }
+}
