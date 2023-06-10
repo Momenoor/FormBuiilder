@@ -8,171 +8,171 @@ use Momenoor\FormBuilder\Form;
 
 trait FieldApi
 {
-    use HasAttributes;
+    use HasOptions;
 
     public function getName(): string
     {
-        return $this->getAttribute('name') ?: $this->name;
+        return $this->getOption('name') ?: $this->name;
     }
 
     public function setName(string $name): self
     {
-        $this->setAttribute('name', $name);
+        $this->addOption('name', $name);
         return $this;
     }
 
     public function getModel()
     {
-        $this->setAttribute('model', $this->hasAttribute('model') ? $this->getAttribute('model') : $this->getForm()->getModel());
-        return $this->getAttribute('model');
+        $this->addOption('model', $this->hasOption('model') ? $this->getOption('model') : $this->getForm()->getModel());
+        return $this->getOption('model');
     }
 
     public function setModel(mixed $name): self
     {
         if (is_object($name) and is_subclass_of($name, Model::class)) {
-            $this->setAttribute('model', $name);
+            $this->addOption('model', $name);
             return $this;
         }
 
-        $this->setAttribute('model', new $name);
+        $this->addOption('model', new $name);
         return $this;
     }
 
     public function getType(): string
     {
-        return Arr::get($this->getAttributes(), 'type', $this->type);
+        return Arr::get($this->getOptions(), 'type', $this->type);
     }
 
     public function setType(string $type): self
     {
-        $this->setAttribute('type', $type);
+        $this->addOption('type', $type);
         return $this;
     }
 
     private function getTemplateAttribute(): string
     {
-        return Arr::get($this->attributes, 'template', false);
+        return Arr::get($this->options, 'template', false);
     }
 
     public function setTemplate(string $template): self
     {
-        $this->setAttribute('template', $template);
+        $this->addOption('template', $template);
         return $this;
     }
 
     public function getLabel(): string
     {
-        return Arr::get($this->getAttributes(), 'label', false);
+        return Arr::get($this->getOptions(), 'label', false);
     }
 
     public function setLabel(string $label): self
     {
-        $this->setAttribute('label', $label);
+        $this->addOption('label', $label);
         return $this;
     }
 
     public function getValue(): string
     {
-        return Arr::get($this->getAttributes(), 'value', false);
+        return Arr::get($this->getOptions(), 'value', false);
     }
 
     public function setValue(string $value): self
     {
-        $this->setAttribute('value', $value);
+        $this->addOption('value', $value);
         return $this;
     }
 
     public function getPlaceholder(): string
     {
-        return Arr::get($this->getAttributes(), 'placeholder', false);
+        return Arr::get($this->getOptions(), 'placeholder', false);
     }
 
     public function setPlaceholder(string $placeholder): self
     {
-        $this->setAttribute('placeholder', $placeholder);
+        $this->addOption('placeholder', $placeholder);
         return $this;
     }
 
     public function getRequired(): bool
     {
-        return Arr::get($this->getAttributes(), 'required', false);
+        return Arr::get($this->getOptions(), 'required', false);
     }
 
     public function setRequired(bool $required): self
     {
-        $this->setAttribute('required', $required);
+        $this->addOption('required', $required);
         return $this;
     }
 
     public function getDisabled(): bool
     {
-        return Arr::get($this->getAttributes(), 'disabled', false);
+        return Arr::get($this->getOptions(), 'disabled', false);
     }
 
     public function setDisabled(bool $disabled): self
     {
-        $this->setAttribute('disabled', $disabled);
+        $this->addOption('disabled', $disabled);
         return $this;
     }
 
     public function getError(): bool
     {
-        return Arr::get($this->getAttributes(), 'error', false);
+        return Arr::get($this->getOptions(), 'error', false);
     }
 
     public function setError(bool $error): self
     {
-        $this->setAttribute('error', $error);
+        $this->addOption('error', $error);
         return $this;
     }
 
     public function getErrorClass(): string
     {
-        return Arr::get($this->getAttributes(), 'errorClass', false);
+        return Arr::get($this->getOptions(), 'errorClass', false);
     }
 
     public function setErrorClass(string $errorClass): self
     {
-        $this->setAttribute('errorClass', $errorClass);
+        $this->addOption('errorClass', $errorClass);
         return $this;
     }
 
     public function getId(): string
     {
-        return Arr::get($this->getAttributes(), 'id', false);
+        return Arr::get($this->getOptions(), 'id', false);
     }
 
     public function setId(string $id): self
     {
-        $this->setAttribute('id', $id);
+        $this->addOption('id', $id);
         return $this;
     }
 
     public function getClass(): string
     {
-        return Arr::get($this->getAttributes(), 'class', false);
+        return Arr::get($this->getOptions(), 'class', false);
     }
 
     public function setClass(string $class): self
     {
-        $this->setAttribute('class', $class);
+        $this->addOption('class', $class);
         return $this;
     }
 
     public function addClass(string $class): self
     {
         $class = trim($class);
-        if ($this->hasAttribute('class')) {
-            $this->setAttribute('class', $this->getAttribute('class') . ' ' . $class);
+        if ($this->hasOption('class')) {
+            $this->addOption('class', $this->getOption('class') . ' ' . $class);
         }
-        $this->setAttribute('class', $class);
+        $this->addOption('class', $class);
         return $this;
     }
 
 
     protected function getForm(): Form
     {
-        return Arr::get($this->attributes, 'form', false);
+        return Arr::get($this->options, 'form', false);
     }
 
     private function getTemplate(): string

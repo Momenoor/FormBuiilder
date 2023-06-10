@@ -10,13 +10,18 @@ class FormBuilderServiceProvider extends ServiceProvider
 
     const NAME = 'FormBuilder';
     const FIELD = 'Field';
-    public function boot()
+
+    public function boot(): void
     {
         $this->loadViewsFrom(__DIR__ . '/resources/views', static::NAME);
         $this->loadTranslationsFrom(__DIR__ . '/lang', static::NAME);
+        $this->publishes([
+            __DIR__ . '/resources/css/' => public_path('css/'),
+            __DIR__ . '/resources/js/' => public_path('js/'),
+        ], static::NAME);
     }
 
-    public function register()
+    public function register(): void
     {
         $this->commands(Console\Commands\FormMakerCommand::class);
 
@@ -30,7 +35,7 @@ class FormBuilderServiceProvider extends ServiceProvider
         $this->alias();
     }
 
-    private function alias()
+    private function alias(): void
     {
         $this->registerAliasIfNotExists(static::NAME, Facades\FormBuilder::class);
         $this->registerAliasIfNotExists('Request', \Illuminate\Support\Facades\Request::class);
@@ -39,7 +44,7 @@ class FormBuilderServiceProvider extends ServiceProvider
         $this->registerAliasIfNotExists('Redirect', \Illuminate\Support\Facades\Redirect::class);
     }
 
-    private function registerAliasIfNotExists($alias, $class)
+    private function registerAliasIfNotExists($alias, $class): void
     {
         if (!array_key_exists($alias, AliasLoader::getInstance()->getAliases())) {
             AliasLoader::getInstance()->alias($alias, $class);

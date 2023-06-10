@@ -1,8 +1,9 @@
 @php
-    $connected_entity = new $field['model'];
+    dd($field);
+    $entity = $field->getModel();
     $connected_entity_key_name = $connected_entity->getKeyName();
     $field['multiple'] = $field['multiple'] ?? $crud->relationAllowsMultiple($field['relation_type']);
-    $field['attribute'] = $field['attribute'] ?? $connected_entity->identifiableAttribute();
+    $field['attribute'] = $field['attribute'] ?? $entity->identifiableAttribute();
     $field['include_all_form_fields'] = $field['include_all_form_fields'] ?? true;
     $field['allows_null'] = $field['allows_null'] ?? $crud->model::isColumnNullable($field['name']);
     // Note: isColumnNullable returns true if column is nullable in database, also true if column does not exist.
@@ -143,18 +144,18 @@
         var $allowClear = $allows_null;
         var $isFieldInline = element.data('field-is-inline');
         var $isPivotSelect = element.data('is-pivot-select');
-        
+
         const changePivotOptionState = function(pivotSelector, enable = true) {
             let containerName = getPivotContainerName(pivotSelector);
             let pivotsContainer = pivotSelector.closest('div[data-repeatable-holder="'+containerName+'"]');
-            
+
             $(pivotsContainer).children().each(function(i,container) {
                 $(container).find('select').each(function(i, el) {
-                    
+
                     if(typeof $(el).attr('data-is-pivot-select') !== 'undefined' && $(el).attr('data-is-pivot-select')) {
                         if(pivotSelector.val()) {
                             if(enable) {
-                                $(el).find('option[value="'+pivotSelector.val()+'"]').prop('disabled',false);   
+                                $(el).find('option[value="'+pivotSelector.val()+'"]').prop('disabled',false);
                             }else{
                                 if($(el).val() !== pivotSelector.val()) {
                                     $(el).find('option[value="'+pivotSelector.val()+'"]').prop('disabled',true);
@@ -172,13 +173,13 @@
         }
 
         const disablePreviouslySelectedPivots = function(pivotSelector) {
-            
+
             let containerName = getPivotContainerName(pivotSelector);
             let pivotsContainer = pivotSelector.closest('div[data-repeatable-holder="'+containerName+'"]');
 
             let selectedValues = [];
             let selectInputs = [];
-            
+
             $(pivotsContainer).children().each(function(i,container) {
                 $(container).find('select').each(function(i, el) {
                     if(typeof $(el).attr('data-is-pivot-select') !== 'undefined' && $(el).attr('data-is-pivot-select') != "false") {
@@ -209,7 +210,7 @@
         if (!$(element).hasClass("select2-hidden-accessible"))
         {
             $(element).select2($select2Settings);
-            
+
             if($isPivotSelect) {
                 disablePreviouslySelectedPivots($(element));
             }
@@ -218,7 +219,7 @@
         if($isPivotSelect) {
             $(element).on('select2:selecting', function(e) {
                 if($(this).val()) {
-                    changePivotOptionState($(this)); 
+                    changePivotOptionState($(this));
                 }
                 return true;
             });

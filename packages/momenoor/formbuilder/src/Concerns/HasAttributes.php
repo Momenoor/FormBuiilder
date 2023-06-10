@@ -3,6 +3,8 @@
 namespace Momenoor\FormBuilder\Concerns;
 
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
+use Momenoor\FormBuilder\Field;
 use Momenoor\FormBuilder\Form;
 
 trait HasAttributes
@@ -17,13 +19,17 @@ trait HasAttributes
 
     public function setAttributes(array $attributes): static
     {
-        $this->attributes = $attributes;
+        if (!empty($attributes)) {
+            foreach ($attributes as $key => $value) {
+                $this->setAttribute($key, $value);
+            }
+        }
         return $this;
     }
 
     public function setAttribute($key, $value, $default = false): static
     {
-        if (!empty($key) && is_string($key)) {
+        if (!empty($key) && is_string($key) && (in_array($key, $this->allowedAttributes) OR Str::startsWith($key, 'data-'))) {
             Arr::set($this->attributes, $key, $value ?: $default);
         }
         return $this;
@@ -45,9 +51,9 @@ trait HasAttributes
         return $this;
     }
 
-    protected function prepareAttributes(): null|Form
+    protected function prepareAttributes(): null|Form|Field
     {
-
+        $attributes = [];
         if (!$this->attributes) {
             return null;
         }
@@ -57,9 +63,12 @@ trait HasAttributes
                 $value = implode(' ', $value);
             }
 
-            $this->addOption($key, $value);
+            if (in_array($key, $this->allowedAttributes)) {
+                $attributes[$key] = $value;
+            }
         }
 
+        $this->setAttributes($attributes);
         return $this;
     }
 }

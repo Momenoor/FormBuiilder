@@ -2,26 +2,32 @@
 
 namespace Momenoor\FormBuilder\Concerns;
 
+use Illuminate\Support\Arr;
+
 trait HasOptions
 {
+    use HasAttributes;
 
-    protected array $options = [
-        'method' => 'POST',
-        'action' => '',
-        'enctype' => 'application/x-www-form-urlencoded',
-        'accept-charset' => 'utf-8',
-        'accept' => 'application/json, text/javascript, */*; q=0.01',
-        'multipart' => false,
-    ];
+    protected array $options = [];
+
     public function addOption($key, $value = null): static
     {
         if ($key) {
             $this->options[$key] = $value;
         }
+        if (in_array($key, $this->allowedAttributes)) {
+            $this->setAttribute($key, $value);
+        }
         return $this;
     }
+
     public function setOptions($options): static
     {
+        Arr::map($options, function ($value, $key) {
+            if (in_array($key, $this->allowedAttributes)) {
+                $this->setAttribute($key, $value);
+            }
+        });
         $this->options = $this->mergeOption($options, $this->options);
         return $this;
     }
@@ -44,12 +50,12 @@ trait HasOptions
 
     public function getOption($name)
     {
-        return $this->options[$name];
+        return Arr::get($this->options, $name, false);
     }
 
     protected function hasOption($option): bool
     {
-        return isset($this->options[$option]);
+        return Arr::get($this->options, $option, false) !== false;
     }
 
 
@@ -73,4 +79,10 @@ trait HasOptions
         }
         return $preparedOptions;
     }
+
+    public function has($key): bool
+    {
+        return $this->hasOption($key) || $this->hasAttribute($key);
+    }
+
 }

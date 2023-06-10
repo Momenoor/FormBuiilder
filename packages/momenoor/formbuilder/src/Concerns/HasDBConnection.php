@@ -2,18 +2,21 @@
 
 namespace Momenoor\FormBuilder\Concerns;
 
+use Doctrine\DBAL\Exception;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Schema;
 
 trait HasDBConnection
 {
-    private function getSchema()
+
+    private function getConnection(): \Illuminate\Database\Connection
     {
-        return $this->getModel()->getConnection()->getSchemaBuilder();
+        return Schema::getConnection();
     }
 
     private function driverIsMongoDb(): bool
     {
-        return $this->getSchema()->getConnection()->getConfig()['driver'] === 'mongodb';
+        return $this->getConnection()->getConfig()['driver'] === 'mongodb';
     }
 
     /**
@@ -23,9 +26,8 @@ trait HasDBConnection
      */
     private function driverIsSql(): bool
     {
-        $driver = $this->getSchema()->getConnection()->getConfig('driver');
+        return $this->getConnection()->getConfig('driver') === 'mysql';
 
-        return in_array($driver, $this->getSqlDriverList());
     }
 
     /**
@@ -40,12 +42,32 @@ trait HasDBConnection
 
     public function getDbColumnType($name): string
     {
-        $schema = $this->getSchema();
-        $tableName = $this->getModel()->getTable();
-        if (Arr::get($schema->getColumnListing($tableName), $name)) {
-            return $schema->getColumnType($tableName, $name);
+        $tableName = $this->model->getTable();
+        if (Arr::get($this->getColumns(), $name)) {
+            return Schema::getColumnType($tableName, $name);
         }
         return 'string';
+    }
+
+    public function getColumns($tableName = null): array
+    {
+        if (empty($tableName)) {
+            $tableName = $this->model->getTable();
+        }
+        return Schema::getColumnListing($tableName);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function getIndexes(): array
+    {
+        return $this->getConnection()->getDoctrineSchemaManager()->listTableIndexes($this->model->getTable());
+    }
+
+    public function getColumn($name): \Doctrine\DBAL\Schema\Column
+    {
+        return $this->getConnection()->getDoctrineColumn($this->model->getTable(), $name);
     }
 
 }

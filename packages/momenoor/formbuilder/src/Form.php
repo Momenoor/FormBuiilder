@@ -8,12 +8,12 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Momenoor\FormBuilder\Concerns\HasDBConnection;
 use Momenoor\FormBuilder\Concerns\HasOptions;
-use Momenoor\FormBuilder\Concerns\HasAttributes;
+use Spatie\Html\Html;
 
 class Form
 {
 
-    use HasAttributes, HasOptions, HasDBConnection;
+    use HasOptions, HasDBConnection;
 
     public array $fields = [];
     public string|null|object $model = null;
@@ -24,6 +24,17 @@ class Form
     public string|null $name = null;
     public string|View|null $template = null;
 
+    public Html $htmlBuilder;
+    protected array $allowedAttributes = [
+        'method',
+        'action',
+        'enctype',
+        'accept-charset',
+        'accept',
+        'multipart',
+    ];
+    public string $identifier = '';
+
 
     public function buildForm()
     {
@@ -31,25 +42,40 @@ class Form
 
     /**
      * @throws BindingResolutionException
+     * @throws \Exception
      */
     public function render($options = [])
     {
-
+        $this->initDependencies();
+        $attributes = $this->prepareAttributes();
         $options = $this->prepareOptions($options);
+
+        $script = $this->loadJs(['jquery.slim.min','bootstrap.bundle.min', 'select2.full.min', 'formBuilder.min']);
+        $style = $this->loadCss(['bootstrap.min', 'select2.min','select2-bootstrap-5-theme.min']);
+
+
         return view()->make($this->getTemplate())->with(
             [
                 'data' => $this->getData(),
                 'model' => $this->getModel(),
                 'options' => $options,
+                'script' => $script,
+                'style' => $style,
+                'attributes' => $attributes,
                 'fields' => $this->getFields(),
                 'rules' => $this->getRules(),
                 'messages' => $this->getMessages(),
                 'errors' => $this->getErrors(),
                 'form' => $this,
+                'showInCard' => $this->getOption('show_in_card'),
+                'rowClass' => $this->getOption('row_class'),
             ]
         );
     }
 
+    /**
+     * @throws BindingResolutionException
+     */
     public function add($name, $type = null, $attributes = null,): Field
     {
         if (is_array($name)) {
@@ -108,14 +134,13 @@ class Form
 
     public function getTemplate(): View|string
     {
-
         return $this->template ?: $this->getConfig('form.template_prefix') . $this->getConfig('form.template');
     }
 
 
     public function setModel($model): static
     {
-        if(is_string($model)) {
+        if (is_string($model)) {
             $model = new $model;
         }
         $this->model = $model;
@@ -253,7 +278,7 @@ class Form
     {
         $name = Str::of($this->getName())->lower()->ucfirst();
         if (Str::contains($name, 'form')) {
-            $name = Str::remove(['form','_'], $name);
+            $name = Str::remove(['form', '_'], $name);
         }
 
         $namespace = $this->getConfig('form.model_namespace', 'App\\Models\\');
@@ -264,5 +289,90 @@ class Form
         }
         $this->setModel($modelName);
 
+    }
+
+    private function initDependencies(): void
+    {
+        $hasRowClass = $this->getConfig('row_class') ?: false;
+        if ($hasRowClass) {
+            $this->addOption('row_class', $hasRowClass);
+        }
+
+        $showInCard = $this->getConfig('show_in_card') ?: false;
+        if ($showInCard) {
+            $this->addOption('show_in_card', $showInCard);
+        }
+    }
+
+    /**
+     * @param string $fileName
+     * @param bool $isLink
+     * @return string
+     * @throws \Exception
+     */
+    private function loadJs(mixed $fileName, bool $isLink = true): string
+    {
+        $scripts = '';
+
+        if (is_array($fileName)) {
+            foreach ($fileName as $key => $value) {
+                $scripts .= $this->loadJs($value);
+            }
+            return $scripts;
+        } else {
+            $file = $this->loadResource('js', $fileName, $isLink);
+            if ($isLink) {
+                return '<script src="' . asset($file) . '"></script>';
+            }
+            return '<script>' . $file . '</script>';
+        }
+
+    }
+
+    /**
+     * @param string $fileName
+     * @param bool $isLink
+     * @return string
+     * @throws \Exception
+     */
+    private function loadCss(mixed $fileName, bool $isLink = true): string
+    {
+        $scripts = '';
+
+        if (is_array($fileName)) {
+            foreach ($fileName as $key => $value) {
+                $scripts .= $this->loadCss($value);
+            }
+            return $scripts;
+        } else {
+            $file = $this->loadResource('css', $fileName, $isLink);
+            if ($isLink) {
+                return '<link rel="stylesheet" href="' . asset($file) . '">';
+            }
+            return '<style>' . $file . '</style>';
+        }
+
+    }
+
+    /**
+     * @throws \Exception
+     */
+    private function loadResource(string $type, string $fileName, bool $isLink = true): string
+    {
+        $ext = match ($type) {
+            'js' => '.js',
+            'css' => '.css',
+            default => '.blade.php',
+        };
+        $file = $type . '/' . $fileName . $ext;
+        $filePath = __DIR__ . '/resources/' . $file;
+
+        if ($isLink) {
+            return $file;
+        }
+        if (file_exists($filePath)) {
+            return file_get_contents($filePath);
+        }
+        throw new \Exception('File not found: ' . $filePath);
     }
 }

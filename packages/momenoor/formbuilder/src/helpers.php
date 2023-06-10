@@ -20,3 +20,15 @@ if (! function_exists('mb_ucfirst')) {
         return mb_strtoupper($firstChar, $encoding).$then;
     }
 }
+if (! function_exists('form')) {
+    /**
+     * Return a form field.
+     *
+     * @param string $name  Field name
+     * @param array  $options  Options
+     */
+    function form(\Momenoor\FormBuilder\Form $form, array $options = [])
+    {
+        return $form->render($options);
+    }
+}

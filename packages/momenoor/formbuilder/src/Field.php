@@ -2,44 +2,67 @@
 
 namespace Momenoor\FormBuilder;
 
+use AllowDynamicProperties;
 use Exception;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use JetBrains\PhpStorm\NoReturn;
 use Momenoor\FormBuilder\Concerns\FieldApi;
-use Momenoor\FormBuilder\Concerns\HasAttributes;
+use Momenoor\FormBuilder\Concerns\HasOptions;
 use Momenoor\FormBuilder\Concerns\HasFieldRelationship;
+use Momenoor\FormBuilder\Concerns\HasIdentifier;
 use ReflectionException;
+use Momenoor\FormBuilder\Fields\Renderer;
+use Spatie\Html\Html;
 
-class Field implements Arrayable
+#[AllowDynamicProperties] class Field implements Arrayable
 {
-    use HasAttributes;
+    use HasOptions;
     use FieldApi;
     use HasFieldRelationship;
+    use HasIdentifier;
+    use Renderer;
 
-    public function __construct(protected $name, protected $type = null, $attributes = [])
+    protected mixed $htmlBuilder;
+    protected array $allowedAttributes = [
+        'name', 'id', 'type',
+        'class', 'disabled', 'required',
+        'placeholder', 'value', 'for'
+    ];
+
+    #[NoReturn] public function __construct(protected $name, protected $type = null, $attributes = [])
     {
-        $this->attributes = $attributes;
+        $this->htmlBuilder = app(Html::class);
+        $this->setOptions($attributes);
     }
 
-    public static function make($name, $type = null, $attributes = [],): Field
+    public static function make($name, $type = null, $attributes = []): Field
     {
-        return new self($name, $type, $attributes,);
+        return new self($name, $type, $attributes);
     }
 
     /**
      * @throws BindingResolutionException
      * @throws Exception
      */
-    public function render(): string
+    public function render()
     {
         $this->setDependenciesAndOptions();
-        return view()->make($this->getTemplate())->with(
+        if (method_exists($this, $this->type)) {
+            $this->{$this->type}();
+        }
+        return view()->make('FormBuilder::field')->with(
             [
-                'field' => $this->toArray(),
-                'crud' => $this->getForm(),
+                'field' => $this,
+                'html' => $this->html,
+                'model' => $this->getModel(),
+                'options' => $this->getOptions(),
+                'attributes' => $this->getAttributes(),
+                'form' => $this->getForm(),
             ]
-        )->render();
+        );
     }
 
     #setDependanciesAndOptions
@@ -49,25 +72,34 @@ class Field implements Arrayable
      */
     private function setDependenciesAndOptions(): void
     {
-        $this->maskSureFieldHasRequiredAttribute();
-    }
-
-
-    /**
-     * @throws Exception
-     */
-    private function maskSureFieldHasRequiredAttribute(): void
-    {
         $this->maskSureFieldHasName();
         $this->maskSureFieldHasLabel();
         $this->maskSureFieldHasEntity();
-        if ($this->hasAttribute('entity')) {
+        if ($this->hasOption('entity')) {
             $this->maskSureFieldHasRelationshipAttributes();
         }
         $this->makeSureFieldHasType();
-
+        $this->makeSureFieldHasClass();
+        $this->setRealName();
 
     }
+
+    private function setRealName(): Field
+    {
+        $name = $this->getName();
+        if ($this->has('relation_type')) {
+            $name = Str::singular($name);
+            $name = $name . '_id';
+        }
+        if (Arr::get($this->getForm()->getColumns(), $name, false)) {
+            return $this->addOption('real_name', $name);
+        }
+
+        return $this->addOption('real_name', $this->name);
+    }
+    /**
+     * @throws Exception
+     */
 
     /**
      * @return void
@@ -79,7 +111,7 @@ class Field implements Arrayable
             throw new Exception('Field name is not set');
         };
 
-        $this->setAttribute('name', $this->name);
+        $this->addOption('name', $this->name);
     }
 
     /**
@@ -88,19 +120,19 @@ class Field implements Arrayable
     private function maskSureFieldHasEntity(): void
     {
 
-        if ($this->hasAttribute('entity')) {
+        if ($this->hasOption('entity')) {
             return;
         }
 
-        // by default, entity is false if we cannot link it with guessing functions to a relation
-        $this->setAttribute('entity', false);
+        // by default, an entity is false if we cannot link it with guessing functions to a relation
+        $this->addOption('entity', false);
 
         $model = $this->getModel();
         //if the name is dot notation we are sure it's a relationship
         if (str_contains($this->getName(), '.')) {
             $possibleMethodName = Str::of($this->getName())->before('.');
             // check model method for possibility of being a relationship
-            $this->setAttribute('entity', $this->modelMethodIsRelationship($model, $possibleMethodName) ? $this->getName() : false);
+            $this->addOption('entity', $this->modelMethodIsRelationship($model, $possibleMethodName) ? $this->getName() : false);
 
             return;
         }
@@ -108,7 +140,7 @@ class Field implements Arrayable
         // if there's a method on the model with this name
         if (method_exists($model, $this->getName())) {
             // check model method for possibility of being a relationship
-            $this->setAttribute('entity', $this->modelMethodIsRelationship($model, $this->getName()));
+            $this->addOption('entity', $this->modelMethodIsRelationship($model, $this->getName()));
 
             return;
         }
@@ -120,7 +152,7 @@ class Field implements Arrayable
 
             if (method_exists($model, $possibleMethodName)) {
                 // check model method for possibility of being a relationship
-                $this->setAttribute('entity', $this->modelMethodIsRelationship($model, $possibleMethodName));
+                $this->addOption('entity', $this->modelMethodIsRelationship($model, $possibleMethodName));
 
                 return;
             }
@@ -132,22 +164,21 @@ class Field implements Arrayable
     {
 
         if (empty($this->type)) {
-            $this->type = ($this->hasAttribute('relation_type')) ? $this->inferFieldTypeFromRelationType() : $this->inferFieldTypeFromDbColumnType();
+            $this->type = ($this->hasOption('relation_type')) ? $this->inferFieldTypeFromRelationType() : $this->inferFieldTypeFromDbColumnType();
         }
 
         if (is_string($this->type)) {
-            $this->setAttribute('type', $this->type);
+            $this->addOption('type', $this->type);
         }
-
 
     }
 
     private function maskSureFieldHasLabel(): void
     {
-        if (!$this->hasAttribute('label')) {
+        if (!$this->hasOption('label')) {
             $name = $this->getName();
             $name = str_replace('_id', '', $name);
-            $this->setAttribute('label', mb_ucfirst(str_replace('_', ' ', $name)));
+            $this->addOption('label', mb_ucfirst(str_replace('_', ' ', $name)));
         }
 
     }
@@ -159,5 +190,16 @@ class Field implements Arrayable
     {
         return (array)$this->attributes;
     }
+
+    private function getHtml(): \Spatie\Html\Html
+    {
+        return html();
+    }
+
+    private function makeSureFieldHasClass(): void
+    {
+        $this->setAttribute('class', $this->hasOption('class') ? $this->getOption('class') : $this->getForm()->getConfig('field.class'));
+    }
+
 
 }
